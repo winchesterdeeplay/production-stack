@@ -228,6 +228,11 @@ spec:
                     required:
                     - image
                     type: object
+                  nodeSelector:
+                    description: Node selection constraints for the runtime Pod
+                    type: object
+                    additionalProperties:
+                      type: string
                 required:
                 - image
                 - resources

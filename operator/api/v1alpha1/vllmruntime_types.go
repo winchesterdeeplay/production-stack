@@ -44,6 +44,9 @@ type DeploymentConfig struct {
 	// Image configuration
 	Image ImageSpec `json:"image"`
 
+	// NodeSelector applies node selection constraints to the runtime Pod
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
 	// Sidecar configuration
 	SidecarConfig SidecarConfig `json:"sidecarConfig,omitempty"`
 }

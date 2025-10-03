@@ -385,7 +385,7 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 		FailureThreshold:    100,
 	}
 
-	// Build command line arguments
+    // Build command line arguments
 	args := []string{
 		vllmRuntime.Spec.Model.ModelURL,
 		"--host",
@@ -561,6 +561,14 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 		}
 	}
 
+	// Image pull secrets (if configured)
+	var imagePullSecrets []corev1.LocalObjectReference
+	if vllmRuntime.Spec.DeploymentConfig.Image.PullSecretName != "" {
+		imagePullSecrets = append(imagePullSecrets, corev1.LocalObjectReference{
+			Name: vllmRuntime.Spec.DeploymentConfig.Image.PullSecretName,
+		})
+	}
+
 	// Build resource requirements
 	resources := corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{},
@@ -586,46 +594,23 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 	}
 
 	if vllmRuntime.Spec.DeploymentConfig.Resources.GPU != "" {
-		// Parse GPU resource as a decimal value
 		gpuResource := resource.MustParse(vllmRuntime.Spec.DeploymentConfig.Resources.GPU)
-		resources.Requests["nvidia.com/gpu"] = gpuResource
-		resources.Limits["nvidia.com/gpu"] = gpuResource
+		resources.Requests[corev1.ResourceName("nvidia.com/gpu")] = gpuResource
+		resources.Limits[corev1.ResourceName("nvidia.com/gpu")] = gpuResource
 	}
 
-	// Get the image from Image spec or use default
+	// Build image and pull policy
 	image := vllmRuntime.Spec.DeploymentConfig.Image.Registry + "/" + vllmRuntime.Spec.DeploymentConfig.Image.Name
-
-	// Get the image pull policy
 	imagePullPolicy := corev1.PullIfNotPresent
 	if vllmRuntime.Spec.DeploymentConfig.Image.PullPolicy != "" {
 		imagePullPolicy = corev1.PullPolicy(vllmRuntime.Spec.DeploymentConfig.Image.PullPolicy)
 	}
 
-	// Build image pull secrets
-	var imagePullSecrets []corev1.LocalObjectReference
-	if vllmRuntime.Spec.DeploymentConfig.Image.PullSecretName != "" {
-		imagePullSecrets = append(imagePullSecrets, corev1.LocalObjectReference{
-			Name: vllmRuntime.Spec.DeploymentConfig.Image.PullSecretName,
-		})
-	}
+    // Build volumes and volume mounts
+    var volumes []corev1.Volume
+    var volumeMounts []corev1.VolumeMount
 
-	if vllmRuntime.Spec.Model.HFTokenSecret.Name != "" {
-		env = append(env, corev1.EnvVar{
-			Name: "HF_TOKEN",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: vllmRuntime.Spec.Model.HFTokenSecret,
-					Key:                  vllmRuntime.Spec.Model.HFTokenName,
-				},
-			},
-		})
-	}
-
-	// Build volumes and volume mounts if storage is enabled
-	var volumes []corev1.Volume
-	var volumeMounts []corev1.VolumeMount
-
-	if vllmRuntime.Spec.StorageConfig.Enabled {
+    if vllmRuntime.Spec.StorageConfig.Enabled {
 		volumeName := "pvc-storage"
 		if vllmRuntime.Spec.StorageConfig.VolumeName != "" {
 			volumeName = vllmRuntime.Spec.StorageConfig.VolumeName
@@ -696,7 +681,7 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 			Name:            "vllm",
 			Image:           image,
 			ImagePullPolicy: imagePullPolicy,
-			Command:         []string{"/opt/venv/bin/vllm", "serve"},
+			Command:         []string{"python3", "-m", "vllm.entrypoints.openai.api_server"},
 			Args:            args,
 			Env:             env,
 			Ports: []corev1.ContainerPort{
@@ -717,7 +702,29 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 		containers = append(containers, r.buildSidecarContainer(vllmRuntime))
 	}
 
-	dep := &appsv1.Deployment{
+    // Derive nodeSelector: prefer spec if present, else allow annotation override "vllm.ai/node-selector" as key=value
+    nodeSelector := map[string]string{}
+    for k, v := range vllmRuntime.Spec.DeploymentConfig.NodeSelector {
+        nodeSelector[k] = v
+    }
+    if vllmRuntime.Annotations != nil {
+        if kv, ok := vllmRuntime.Annotations["vllm.ai/node-selector"]; ok && kv != "" {
+            // parse key=value
+            for i := 0; i < len(kv); i++ {
+                // find first '='
+                if kv[i] == '=' {
+                    key := kv[:i]
+                    val := kv[i+1:]
+                    if key != "" && val != "" {
+                        nodeSelector[key] = val
+                    }
+                    break
+                }
+            }
+        }
+    }
+
+    dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      vllmRuntime.Name,
 			Namespace: vllmRuntime.Namespace,
@@ -741,10 +748,25 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 					ImagePullSecrets: imagePullSecrets,
 					Volumes:          volumes,
 					Containers:       containers,
+					NodeSelector:     nodeSelector,
 				},
 			},
 		},
 	}
+
+	// If secret vllm-api-key exists, add envFromRef to deployment
+	// Note: client.Get requires context; but simpler: add EnvVarSource to container
+	// to read key VLLM_API_KEY from secret vllm-api-key if present at runtime
+	containers[0].Env = append(containers[0].Env, corev1.EnvVar{
+		Name: "VLLM_API_KEY",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "vllm-api-key"},
+				Key:                  "VLLM_API_KEY",
+				Optional:             func() *bool { b := true; return &b }(),
+			},
+		},
+	})
 
 	// Set the owner reference
 	ctrl.SetControllerReference(vllmRuntime, dep, r.Scheme)
