@@ -142,56 +142,59 @@ func (r *VLLMRuntimeReconciler) Reconcile(
 
 	// Handle PVC if storage is enabled
 	if vllmRuntime.Spec.StorageConfig.Enabled {
-		// Check if the PVC already exists, if not create a new one
-		foundPVC := &corev1.PersistentVolumeClaim{}
-		err = r.Get(
-			ctx,
-			types.NamespacedName{Name: vllmRuntime.Name, Namespace: vllmRuntime.Namespace},
-			foundPVC,
-		)
-		if err != nil && errors.IsNotFound(err) {
-			// Define a new PVC
-			pvc := r.pvcForVLLMRuntime(vllmRuntime)
-			log.Info("Creating a new PVC", "PVC.Namespace", pvc.Namespace, "PVC.Name", pvc.Name)
-			err = r.Create(ctx, pvc)
-			if err != nil {
-				log.Error(
-					err,
-					"Failed to create new PVC",
-					"PVC.Namespace",
-					pvc.Namespace,
-					"PVC.Name",
-					pvc.Name,
-				)
+		// If user supplied an existing claimName, skip PVC management
+		if vllmRuntime.Spec.StorageConfig.ClaimName == "" {
+			// Check if the PVC already exists, if not create a new one
+			foundPVC := &corev1.PersistentVolumeClaim{}
+			err = r.Get(
+				ctx,
+				types.NamespacedName{Name: vllmRuntime.Name, Namespace: vllmRuntime.Namespace},
+				foundPVC,
+			)
+			if err != nil && errors.IsNotFound(err) {
+				// Define a new PVC
+				pvc := r.pvcForVLLMRuntime(vllmRuntime)
+				log.Info("Creating a new PVC", "PVC.Namespace", pvc.Namespace, "PVC.Name", pvc.Name)
+				err = r.Create(ctx, pvc)
+				if err != nil {
+					log.Error(
+						err,
+						"Failed to create new PVC",
+						"PVC.Namespace",
+						pvc.Namespace,
+						"PVC.Name",
+						pvc.Name,
+					)
+					return ctrl.Result{}, err
+				}
+				// PVC created successfully - return and requeue
+				return ctrl.Result{Requeue: true}, nil
+			} else if err != nil {
+				log.Error(err, "Failed to get PVC")
 				return ctrl.Result{}, err
 			}
-			// PVC created successfully - return and requeue
-			return ctrl.Result{Requeue: true}, nil
-		} else if err != nil {
-			log.Error(err, "Failed to get PVC")
-			return ctrl.Result{}, err
-		}
 
-		// Update the PVC if needed
-		if r.pvcNeedsUpdate(foundPVC, vllmRuntime) {
-			log.Info("Updating PVC", "PVC.Namespace", foundPVC.Namespace, "PVC.Name", foundPVC.Name)
-			// Create new PVC spec
-			newPVC := r.pvcForVLLMRuntime(vllmRuntime)
+			// Update the PVC if needed
+			if r.pvcNeedsUpdate(foundPVC, vllmRuntime) {
+				log.Info("Updating PVC", "PVC.Namespace", foundPVC.Namespace, "PVC.Name", foundPVC.Name)
+				// Create new PVC spec
+				newPVC := r.pvcForVLLMRuntime(vllmRuntime)
 
-			err = r.Update(ctx, newPVC)
-			if err != nil {
-				log.Error(
-					err,
-					"Failed to update PVC",
-					"PVC.Namespace",
-					foundPVC.Namespace,
-					"PVC.Name",
-					foundPVC.Name,
-				)
-				return ctrl.Result{}, err
+				err = r.Update(ctx, newPVC)
+				if err != nil {
+					log.Error(
+						err,
+						"Failed to update PVC",
+						"PVC.Namespace",
+						foundPVC.Namespace,
+						"PVC.Name",
+						foundPVC.Name,
+					)
+					return ctrl.Result{}, err
+				}
+				// PVC updated successfully - return and requeue
+				return ctrl.Result{Requeue: true}, nil
 			}
-			// PVC updated successfully - return and requeue
-			return ctrl.Result{Requeue: true}, nil
 		}
 	}
 
@@ -642,11 +645,16 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 			mountPath = vllmRuntime.Spec.StorageConfig.MountPath
 		}
 
-		volumes = append(volumes, corev1.Volume{
+        claimName := vllmRuntime.Name
+        if vllmRuntime.Spec.StorageConfig.ClaimName != "" {
+            claimName = vllmRuntime.Spec.StorageConfig.ClaimName
+        }
+
+        volumes = append(volumes, corev1.Volume{
 			Name: volumeName,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: vllmRuntime.Name,
+                    ClaimName: claimName,
 				},
 			},
 		})

@@ -186,6 +186,10 @@ type StorageConfig struct {
 	// VolumeName is the name of the volume (optional, will be auto-generated if not specified)
 	// +kubebuilder:default="pvc-storage"
 	VolumeName string `json:"volumeName,omitempty"`
+
+    // ClaimName allows binding to an existing PersistentVolumeClaim by name.
+    // When set, the operator will not create or update a PVC and will mount this claim instead.
+    ClaimName string `json:"claimName,omitempty"`
 }
 
 // SidecarConfig defines the sidecar container configuration
