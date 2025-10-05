@@ -314,6 +314,12 @@ spec:
               storageConfig:
                 description: Storage configuration
                 properties:
+                  claimName:
+                    description: ClaimName allows binding to an existing PersistentVolumeClaim
+                      by name. When set, the operator will not create or update a PVC
+                      and will mount this claim instead. Must exist in the same namespace
+                      as the VLLMRuntime.
+                    type: string
                   accessMode:
                     default: ReadWriteMany
                     description: AccessMode is the access mode for the persistent
