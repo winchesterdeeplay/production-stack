@@ -387,6 +387,25 @@ spec:
               vllmConfig:
                 description: vLLM server configuration
                 properties:
+                  livenessProbe:
+                    description: Liveness probe configuration
+                    properties:
+                      failureThreshold:
+                        format: int32
+                        type: integer
+                      initialDelaySeconds:
+                        format: int32
+                        type: integer
+                      periodSeconds:
+                        format: int32
+                        type: integer
+                      successThreshold:
+                        format: int32
+                        type: integer
+                      timeoutSeconds:
+                        format: int32
+                        type: integer
+                    type: object
                   enableChunkedPrefill:
                     description: Enable chunked prefill
                     type: boolean
@@ -428,9 +447,44 @@ spec:
                     description: Tensor parallel size
                     format: int32
                     type: integer
+                  readinessProbe:
+                    description: Readiness probe configuration
+                    properties:
+                      failureThreshold:
+                        format: int32
+                        type: integer
+                      initialDelaySeconds:
+                        format: int32
+                        type: integer
+                      periodSeconds:
+                        format: int32
+                        type: integer
+                      successThreshold:
+                        format: int32
+                        type: integer
+                      timeoutSeconds:
+                        format: int32
+                        type: integer
+                    type: object
                   v1:
                     description: Use V1 API
                     type: boolean
+                  startupProbe:
+                    description: Startup probe configuration
+                    properties:
+                      failureThreshold:
+                        format: int32
+                        type: integer
+                      initialDelaySeconds:
+                        format: int32
+                        type: integer
+                      periodSeconds:
+                        format: int32
+                        type: integer
+                      timeoutSeconds:
+                        format: int32
+                        type: integer
+                    type: object
                 type: object
             required:
             - deploymentConfig

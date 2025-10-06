@@ -98,6 +98,29 @@ type VLLMConfig struct {
 
 	// Environment variables
 	Env []EnvVar `json:"env,omitempty"`
+
+    // ReadinessProbe allows configuring readiness probe timings
+    ReadinessProbe ProbeConfig `json:"readinessProbe,omitempty"`
+
+    // LivenessProbe allows configuring liveness probe timings
+    LivenessProbe ProbeConfig `json:"livenessProbe,omitempty"`
+
+    // StartupProbe allows configuring startup probe timings
+    StartupProbe ProbeConfig `json:"startupProbe,omitempty"`
+}
+
+// ProbeConfig defines configurable probe timings
+type ProbeConfig struct {
+    // +kubebuilder:validation:Minimum=0
+    InitialDelaySeconds int32 `json:"initialDelaySeconds,omitempty"`
+    // +kubebuilder:validation:Minimum=0
+    PeriodSeconds int32 `json:"periodSeconds,omitempty"`
+    // +kubebuilder:validation:Minimum=0
+    TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
+    // +kubebuilder:validation:Minimum=0
+    FailureThreshold int32 `json:"failureThreshold,omitempty"`
+    // +kubebuilder:validation:Minimum=0
+    SuccessThreshold int32 `json:"successThreshold,omitempty"`
 }
 
 // ModelSpec defines the model configuration
