@@ -388,6 +388,29 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 		FailureThreshold:    100,
 	}
 
+	// Apply user-configured probe overrides from the CR (per-field if > 0)
+	apply := func(dst *corev1.Probe, src productionstackv1alpha1.ProbeConfig, allowSuccess bool) {
+		if src.InitialDelaySeconds > 0 {
+			dst.InitialDelaySeconds = int32(src.InitialDelaySeconds)
+		}
+		if src.PeriodSeconds > 0 {
+			dst.PeriodSeconds = int32(src.PeriodSeconds)
+		}
+		if src.TimeoutSeconds > 0 {
+			dst.TimeoutSeconds = int32(src.TimeoutSeconds)
+		}
+		if src.FailureThreshold > 0 {
+			dst.FailureThreshold = int32(src.FailureThreshold)
+		}
+		if allowSuccess && src.SuccessThreshold > 0 {
+			dst.SuccessThreshold = int32(src.SuccessThreshold)
+		}
+	}
+
+	apply(readinessProbe, vllmRuntime.Spec.VLLMConfig.ReadinessProbe, true)
+	apply(livenessProbe, vllmRuntime.Spec.VLLMConfig.LivenessProbe, true)
+	apply(startupProbe, vllmRuntime.Spec.VLLMConfig.StartupProbe, false)
+
     // Build command line arguments
 	args := []string{
 		vllmRuntime.Spec.Model.ModelURL,
