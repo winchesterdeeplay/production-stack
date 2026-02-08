@@ -577,14 +577,9 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 		}
 	}
 
-	// Add user-defined environment variables
+	// Add user-defined environment variables (supports valueFrom/secretKeyRef)
 	if vllmRuntime.Spec.VLLMConfig.Env != nil {
-		for _, e := range vllmRuntime.Spec.VLLMConfig.Env {
-			env = append(env, corev1.EnvVar{
-				Name:  e.Name,
-				Value: e.Value,
-			})
-		}
+		env = append(env, vllmRuntime.Spec.VLLMConfig.Env...)
 	}
 
 	// Image pull secrets (if configured)
@@ -842,12 +837,7 @@ func (r *VLLMRuntimeReconciler) buildSidecarContainer(
 		Name:  "LORA_DOWNLOAD_BASE_DIR",
 		Value: mountPath + "/lora-adapters",
 	})
-	for _, envVar := range sidecarConfig.Env {
-		sidecarEnv = append(sidecarEnv, corev1.EnvVar{
-			Name:  envVar.Name,
-			Value: envVar.Value,
-		})
-	}
+	sidecarEnv = append(sidecarEnv, sidecarConfig.Env...)
 
 	// Build sidecar resources
 	sidecarResources := corev1.ResourceRequirements{

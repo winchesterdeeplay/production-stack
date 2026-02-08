@@ -180,15 +180,45 @@ spec:
                       env:
                         description: Environment variables for the sidecar container
                         items:
-                          description: EnvVar represents an environment variable
+                          description: EnvVar represents a corev1.EnvVar (supports
+                            value and valueFrom with secretKeyRef/configMapKeyRef)
                           properties:
                             name:
                               type: string
                             value:
                               type: string
+                            valueFrom:
+                              description: Source for the environment variable's value
+                              properties:
+                                secretKeyRef:
+                                  description: Selects a key of a secret
+                                  properties:
+                                    name:
+                                      type: string
+                                    key:
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - name
+                                  - key
+                                  type: object
+                                configMapKeyRef:
+                                  description: Selects a key of a configmap
+                                  properties:
+                                    name:
+                                      type: string
+                                    key:
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - name
+                                  - key
+                                  type: object
+                              type: object
                           required:
                           - name
-                          - value
                           type: object
                         type: array
                       image:
@@ -383,15 +413,45 @@ spec:
                   env:
                     description: Environment variables
                     items:
-                      description: EnvVar represents an environment variable
+                      description: EnvVar represents a corev1.EnvVar (supports
+                        value and valueFrom with secretKeyRef/configMapKeyRef)
                       properties:
                         name:
                           type: string
                         value:
                           type: string
+                        valueFrom:
+                          description: Source for the environment variable's value
+                          properties:
+                            secretKeyRef:
+                              description: Selects a key of a secret
+                              properties:
+                                name:
+                                  type: string
+                                key:
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - name
+                              - key
+                              type: object
+                            configMapKeyRef:
+                              description: Selects a key of a configmap
+                              properties:
+                                name:
+                                  type: string
+                                key:
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - name
+                              - key
+                              type: object
+                          type: object
                       required:
                       - name
-                      - value
                       type: object
                     type: array
                   extraArgs:

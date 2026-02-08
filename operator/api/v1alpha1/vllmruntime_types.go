@@ -238,11 +238,8 @@ type SidecarConfig struct {
 	MountPath string `json:"mountPath,omitempty"`
 }
 
-// EnvVar represents an environment variable
-type EnvVar struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-}
+// EnvVar is an alias for corev1.EnvVar to support valueFrom/secretKeyRef
+type EnvVar = corev1.EnvVar
 
 // VLLMRuntimeStatus defines the observed state of VLLMRuntime
 type VLLMRuntimeStatus struct {
