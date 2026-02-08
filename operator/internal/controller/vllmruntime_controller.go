@@ -411,7 +411,7 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 	apply(livenessProbe, vllmRuntime.Spec.VLLMConfig.LivenessProbe, true)
 	apply(startupProbe, vllmRuntime.Spec.VLLMConfig.StartupProbe, false)
 
-    // Build command line arguments
+	// Build command line arguments
 	args := []string{
 		vllmRuntime.Spec.Model.ModelURL,
 		"--host",
@@ -632,11 +632,11 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 		imagePullPolicy = corev1.PullPolicy(vllmRuntime.Spec.DeploymentConfig.Image.PullPolicy)
 	}
 
-    // Build volumes and volume mounts
-    var volumes []corev1.Volume
-    var volumeMounts []corev1.VolumeMount
+	// Build volumes and volume mounts
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
 
-    if vllmRuntime.Spec.StorageConfig.Enabled {
+	if vllmRuntime.Spec.StorageConfig.Enabled {
 		volumeName := "pvc-storage"
 		if vllmRuntime.Spec.StorageConfig.VolumeName != "" {
 			volumeName = vllmRuntime.Spec.StorageConfig.VolumeName
@@ -647,16 +647,16 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 			mountPath = vllmRuntime.Spec.StorageConfig.MountPath
 		}
 
-        claimName := vllmRuntime.Name
-        if vllmRuntime.Spec.StorageConfig.ClaimName != "" {
-            claimName = vllmRuntime.Spec.StorageConfig.ClaimName
-        }
+		claimName := vllmRuntime.Name
+		if vllmRuntime.Spec.StorageConfig.ClaimName != "" {
+			claimName = vllmRuntime.Spec.StorageConfig.ClaimName
+		}
 
-        volumes = append(volumes, corev1.Volume{
+		volumes = append(volumes, corev1.Volume{
 			Name: volumeName,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-                    ClaimName: claimName,
+					ClaimName: claimName,
 				},
 			},
 		})
@@ -733,29 +733,29 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 		containers = append(containers, r.buildSidecarContainer(vllmRuntime))
 	}
 
-    // Derive nodeSelector: prefer spec if present, else allow annotation override "vllm.ai/node-selector" as key=value
-    nodeSelector := map[string]string{}
-    for k, v := range vllmRuntime.Spec.DeploymentConfig.NodeSelector {
-        nodeSelector[k] = v
-    }
-    if vllmRuntime.Annotations != nil {
-        if kv, ok := vllmRuntime.Annotations["vllm.ai/node-selector"]; ok && kv != "" {
-            // parse key=value
-            for i := 0; i < len(kv); i++ {
-                // find first '='
-                if kv[i] == '=' {
-                    key := kv[:i]
-                    val := kv[i+1:]
-                    if key != "" && val != "" {
-                        nodeSelector[key] = val
-                    }
-                    break
-                }
-            }
-        }
-    }
+	// Derive nodeSelector: prefer spec if present, else allow annotation override "vllm.ai/node-selector" as key=value
+	nodeSelector := map[string]string{}
+	for k, v := range vllmRuntime.Spec.DeploymentConfig.NodeSelector {
+		nodeSelector[k] = v
+	}
+	if vllmRuntime.Annotations != nil {
+		if kv, ok := vllmRuntime.Annotations["vllm.ai/node-selector"]; ok && kv != "" {
+			// parse key=value
+			for i := 0; i < len(kv); i++ {
+				// find first '='
+				if kv[i] == '=' {
+					key := kv[:i]
+					val := kv[i+1:]
+					if key != "" && val != "" {
+						nodeSelector[key] = val
+					}
+					break
+				}
+			}
+		}
+	}
 
-    dep := &appsv1.Deployment{
+	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      vllmRuntime.Name,
 			Namespace: vllmRuntime.Namespace,
