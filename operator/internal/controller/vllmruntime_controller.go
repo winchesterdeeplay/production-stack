@@ -733,7 +733,7 @@ func (r *VLLMRuntimeReconciler) deploymentForVLLMRuntime(
 			Name:            "vllm",
 			Image:           image,
 			ImagePullPolicy: imagePullPolicy,
-			Command:         []string{"/opt/venv/bin/vllm", "serve"},
+			Command:         []string{"vllm", "serve"},
 			Args:            args,
 			Env:             env,
 			Ports: []corev1.ContainerPort{
